@@ -1,0 +1,51 @@
+{
+  "name": "rentflow",
+  "version": "0.1.0",
+  "private": true,
+  "description": "> Simple property management for independent landlords with 1–20 units.",
+  "homepage": "https://github.com/sennychong9-87/rentflow#readme",
+  "bugs": {
+    "url": "https://github.com/sennychong9-87/rentflow/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sennychong9-87/rentflow.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "postcss.config.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.43.4",
+    "@hookform/resolvers": "^3.6.0",
+    "lucide-react": "^0.383.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-hook-form": "^7.52.0",
+    "react-router-dom": "^6.23.1",
+    "zustand": "^4.5.2",
+    "zod": "^3.23.8",
+    "date-fns": "^3.6.0",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react": "^7.34.2",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "eslint-plugin-react-refresh": "^0.4.7",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.4",
+    "vite": "^5.3.1"
+  }
+}
