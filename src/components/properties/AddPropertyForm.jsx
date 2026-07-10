@@ -3,6 +3,8 @@ import { Plus, Trash2 } from 'lucide-react'
 import { usePropertyStore } from '@/store/propertyStore'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
+import { PROPERTY_TYPES } from '@/lib/constants'
+import { logEvent } from '@/hooks/useAuditLog'
 
 /**
  * AddPropertyForm — 2-step form for adding a property + its units
@@ -101,6 +103,30 @@ export default function AddPropertyForm({ onSuccess, onCancel }) {
       }
     }
 
+    // 3. Auto-create Common Areas unit for HMO properties
+    if (property.property_type === 'hmo') {
+      await supabase.from('units').insert({
+        property_id: prop.id,
+        landlord_id: user.id,
+        unit_number: 'common',
+        is_common_area: true,
+        monthly_rent: 0,
+        deposit_amount: 0,
+        status: 'occupied',
+        bedrooms: 0,
+        bathrooms: 0,
+      })
+    }
+
+    // 4. Audit log
+    logEvent(user.id, {
+      entity_type: 'property',
+      entity_id: prop.id,
+      entity_label: prop.name,
+      action: 'created',
+      description: `Created property "${prop.name}"`,
+    })
+
     setLoading(false)
     onSuccess?.()
   }
@@ -161,9 +187,9 @@ export default function AddPropertyForm({ onSuccess, onCancel }) {
             <div>
               <label className="label">Property type</label>
               <select className="input" value={property.property_type} onChange={updateProperty('property_type')}>
-                <option value="residential">Residential</option>
-                <option value="commercial">Commercial</option>
-                <option value="mixed">Mixed use</option>
+                {PROPERTY_TYPES.map(pt => (
+                  <option key={pt.value} value={pt.value}>{pt.label}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -174,13 +200,15 @@ export default function AddPropertyForm({ onSuccess, onCancel }) {
       {step === 2 && (
         <div className="space-y-4">
           <p className="text-sm text-slate-500">
-            Add all units in this property. You can skip unit number to add them later.
+            Add all {property.property_type === 'hmo' ? 'rooms' : 'units'} in this property. You can skip the number to add them later.
           </p>
 
           {units.map((unit, i) => (
             <div key={i} className="border border-slate-100 rounded-xl p-4 space-y-3 bg-slate-50/50">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-slate-700">Unit {i + 1}</span>
+                <span className="text-sm font-semibold text-slate-700">
+                  {property.property_type === 'hmo' ? 'Room' : 'Unit'} {i + 1}
+                </span>
                 {units.length > 1 && (
                   <button
                     onClick={() => removeUnit(i)}
@@ -193,7 +221,7 @@ export default function AddPropertyForm({ onSuccess, onCancel }) {
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="label">Unit #</label>
+                  <label className="label">{property.property_type === 'hmo' ? 'Room #' : 'Unit #'}</label>
                   <input className="input" placeholder="1A" value={unit.unit_number} onChange={updateUnit(i, 'unit_number')} />
                 </div>
                 <div>
@@ -224,7 +252,7 @@ export default function AddPropertyForm({ onSuccess, onCancel }) {
           ))}
 
           <button onClick={addUnit} className="btn-secondary w-full gap-2">
-            <Plus className="w-4 h-4" /> Add another unit
+            <Plus className="w-4 h-4" /> Add another {property.property_type === 'hmo' ? 'room' : 'unit'}
           </button>
         </div>
       )}

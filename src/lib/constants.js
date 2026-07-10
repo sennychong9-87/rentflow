@@ -54,6 +54,13 @@ export const PAYMENT_METHODS = [
   { value: 'other',         label: 'Other' },
 ]
 
+export const PROPERTY_TYPES = [
+  { value: 'residential', label: 'Residential' },
+  { value: 'commercial', label: 'Commercial' },
+  { value: 'mixed', label: 'Mixed use' },
+  { value: 'hmo', label: 'HMO / House Share' },
+]
+
 export const NAV_ITEMS = [
   { path: '/dashboard',            label: 'Dashboard',    icon: 'LayoutDashboard' },
   { path: '/dashboard/properties', label: 'Properties',   icon: 'Building2' },
@@ -62,5 +69,6 @@ export const NAV_ITEMS = [
   { path: '/dashboard/maintenance',label: 'Maintenance',  icon: 'Wrench' },
   { path: '/dashboard/messages',   label: 'Messages',     icon: 'MessageSquare' },
   { path: '/dashboard/documents',  label: 'Documents',    icon: 'FileText' },
+  { path: '/dashboard/activity',   label: 'Activity Log', icon: 'Activity' },
   { path: '/dashboard/settings',   label: 'Settings',     icon: 'Settings' },
 ]

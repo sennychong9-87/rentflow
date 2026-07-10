@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { formatDate, formatCurrency, getInitials, RENT_STATUS_STYLES, RENT_STATUS_LABELS } from '@/lib/utils'
 import { MAINTENANCE_CATEGORIES, MAINTENANCE_PRIORITIES } from '@/lib/constants'
 import LoadingSpinner from '@/components/shared/LoadingSpinner'
+import { logEvent } from '@/hooks/useAuditLog'
 import { Zap, Home, DollarSign, Wrench, MessageSquare, FileText, Send, Plus, CheckCircle, AlertCircle } from 'lucide-react'
 
 const TABS = [
@@ -32,6 +33,8 @@ export default function TenantPortal() {
   const [ticketForm, setTicketForm] = useState({ title: '', description: '', category: 'general', priority: 'medium', preferred_entry_time: '' })
   const [submittingTicket, setSubmittingTicket] = useState(false)
   const [ticketSuccess, setTicketSuccess] = useState(false)
+  const [isSharedArea, setIsSharedArea] = useState('no')
+  const isHmo = tenant?.units?.properties?.property_type === 'hmo'
 
   // Message input
   const [newMessage, setNewMessage] = useState('')
@@ -66,21 +69,35 @@ export default function TenantPortal() {
     setLease(l); setRentLedger(r || []); setTickets(m || [])
     setMessages(msgs || []); setDocuments(docs || [])
     setLoading(false)
+
+    // Log portal access
+    logEvent(t.landlord_id, {
+      entity_type: 'portal',
+      entity_id: t.id,
+      entity_label: t.full_name,
+      action: 'accessed',
+      description: `${t.full_name} accessed the tenant portal`,
+    })
   }
 
   const submitTicket = async () => {
     if (!ticketForm.title || !ticketForm.description) return
     setSubmittingTicket(true)
+    const commonUnitId = isHmo && isSharedArea === 'yes'
+      ? tenant.units?.properties?.units?.find(u => u.is_common_area)?.id
+      : null
     const { data: newTicket } = await supabase.from('maintenance').insert({
       landlord_id: tenant.units?.properties?.landlord_id || tenant.landlord_id,
       tenant_id: tenant.id,
-      unit_id: tenant.unit_id,
+      unit_id: commonUnitId || tenant.unit_id,
       ...ticketForm,
       submitted_by: 'tenant',
+      is_shared_area: isHmo && isSharedArea === 'yes',
     }).select().single()
     if (newTicket) setTickets(prev => [newTicket, ...prev])
     setTicketSuccess(true)
     setShowTicketForm(false)
+    setIsSharedArea('no')
     setTicketForm({ title: '', description: '', category: 'general', priority: 'medium', preferred_entry_time: '' })
     setTimeout(() => setTicketSuccess(false), 4000)
     setSubmittingTicket(false)
@@ -270,6 +287,15 @@ export default function TenantPortal() {
                     </select>
                   </div>
                 </div>
+                {isHmo && (
+                  <div>
+                    <label className="label">Is this about a shared area?</label>
+                    <select className="input" value={isSharedArea} onChange={e => setIsSharedArea(e.target.value)}>
+                      <option value="no">No — my room</option>
+                      <option value="yes">Yes — kitchen, bathroom, living room, etc.</option>
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label className="label">Preferred entry time <span className="text-slate-400 font-normal">(optional)</span></label>
                   <input className="input" placeholder="e.g. Mornings, after 5pm, anytime" value={ticketForm.preferred_entry_time}

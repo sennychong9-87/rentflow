@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
+import { logEvent } from '@/hooks/useAuditLog'
 
 export const usePropertyStore = create((set, get) => ({
   properties: [],
@@ -50,6 +51,14 @@ export const usePropertyStore = create((set, get) => ({
       set(state => ({
         properties: state.properties.map(p => p.id === id ? data : p)
       }))
+      logEvent(data.landlord_id, {
+        entity_type: 'property',
+        entity_id: data.id,
+        entity_label: data.name,
+        action: 'updated',
+        description: `Updated property "${data.name}"`,
+        metadata: { updated_fields: Object.keys(updates) },
+      })
       return { data }
     } catch (error) {
       return { error: error.message }
@@ -58,12 +67,22 @@ export const usePropertyStore = create((set, get) => ({
 
   deleteProperty: async (id) => {
     try {
+      const prop = get().properties.find(p => p.id === id)
       const { error } = await supabase.from('properties').delete().eq('id', id)
       if (error) throw error
       set(state => ({
         properties: state.properties.filter(p => p.id !== id),
         units: state.units.filter(u => u.property_id !== id)
       }))
+      if (prop) {
+        logEvent(prop.landlord_id, {
+          entity_type: 'property',
+          entity_id: prop.id,
+          entity_label: prop.name,
+          action: 'deleted',
+          description: `Deleted property "${prop.name}"`,
+        })
+      }
       return { success: true }
     } catch (error) {
       return { error: error.message }

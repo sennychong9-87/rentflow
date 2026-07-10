@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useTenantStore } from '@/store/tenantStore'
 import { formatDate, cn } from '@/lib/utils'
 import { DOCUMENT_CATEGORIES } from '@/lib/constants'
+import { logEvent } from '@/hooks/useAuditLog'
 import EmptyState from '@/components/shared/EmptyState'
 import LoadingSpinner from '@/components/shared/LoadingSpinner'
 
@@ -117,7 +118,7 @@ export default function Documents() {
 
     const { data: urlData } = supabase.storage.from('documents').getPublicUrl(path)
 
-    await supabase.from('documents').insert({
+    const { data: insertedDoc } = await supabase.from('documents').insert({
       landlord_id: user.id,
       tenant_id: form.tenant_id || null,
       name: form.name,
@@ -128,7 +129,18 @@ export default function Documents() {
       public_url: urlData.publicUrl,
       category: form.category,
       visible_to_tenant: form.visible_to_tenant,
-    })
+    }).select().single()
+
+    if (insertedDoc) {
+      logEvent(user.id, {
+        entity_type: 'document',
+        entity_id: insertedDoc.id,
+        entity_label: insertedDoc.name,
+        action: 'uploaded',
+        description: `Uploaded document "${insertedDoc.name}"`,
+        metadata: { category: form.category, file_size: file.size },
+      })
+    }
     loadDocuments()
   }
 
@@ -137,6 +149,13 @@ export default function Documents() {
     await supabase.storage.from('documents').remove([doc.storage_path])
     await supabase.from('documents').delete().eq('id', doc.id)
     setDocuments(prev => prev.filter(d => d.id !== doc.id))
+    logEvent(user.id, {
+      entity_type: 'document',
+      entity_id: doc.id,
+      entity_label: doc.name,
+      action: 'deleted',
+      description: `Deleted document "${doc.name}"`,
+    })
   }
 
   const toggleVisibility = async (doc) => {

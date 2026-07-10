@@ -23,6 +23,7 @@ import RentLedger from '@/pages/dashboard/RentLedger'
 import Documents from '@/pages/dashboard/Documents'
 import Messages from '@/pages/dashboard/Messages'
 import Settings from '@/pages/dashboard/Settings'
+import ActivityLog from '@/pages/dashboard/ActivityLog'
 
 // Loading screen
 import LoadingSpinner from '@/components/shared/LoadingSpinner'
@@ -79,6 +80,7 @@ export default function App() {
           <Route path="rent" element={<RentLedger />} />
           <Route path="documents" element={<Documents />} />
           <Route path="messages" element={<Messages />} />
+          <Route path="activity" element={<ActivityLog />} />
           <Route path="settings" element={<Settings />} />
         </Route>
 

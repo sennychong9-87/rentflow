@@ -1,12 +1,12 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Building2, Users, DollarSign,
-  Wrench, MessageSquare, FileText, Settings, LogOut, Zap
+  Wrench, MessageSquare, FileText, Settings, LogOut, Zap, Activity
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { cn, getInitials } from '@/lib/utils'
 
-const ICONS = { LayoutDashboard, Building2, Users, DollarSign, Wrench, MessageSquare, FileText, Settings }
+const ICONS = { LayoutDashboard, Building2, Users, DollarSign, Wrench, MessageSquare, FileText, Activity, Settings }
 
 const NAV = [
   { to: '/dashboard',             label: 'Dashboard',   icon: 'LayoutDashboard', end: true },
@@ -16,9 +16,10 @@ const NAV = [
   { to: '/dashboard/maintenance', label: 'Maintenance', icon: 'Wrench' },
   { to: '/dashboard/messages',    label: 'Messages',    icon: 'MessageSquare' },
   { to: '/dashboard/documents',   label: 'Documents',   icon: 'FileText' },
+  { to: '/dashboard/activity',    label: 'Activity Log', icon: 'Activity' },
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ open, onClose }) {
   const { profile, signOut } = useAuth()
   const navigate = useNavigate()
 
@@ -27,8 +28,26 @@ export default function Sidebar() {
     navigate('/login')
   }
 
+  const handleNav = () => {
+    onClose?.()
+  }
+
   return (
-    <aside className="w-60 flex-shrink-0 bg-white border-r border-slate-100 flex flex-col h-full">
+    <>
+      {/* Mobile overlay */}
+      {open && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-60 bg-white border-r border-slate-100 flex flex-col
+        transition-transform duration-200 ease-in-out
+        lg:static lg:translate-x-0 lg:flex-shrink-0 lg:h-full
+        ${open ? 'translate-x-0' : '-translate-x-full'}
+      `}>
       {/* Logo */}
       <div className="h-16 flex items-center px-5 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
@@ -48,6 +67,7 @@ export default function Sidebar() {
               key={to}
               to={to}
               end={end}
+              onClick={handleNav}
               className={({ isActive }) => cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
                 isActive
@@ -66,6 +86,7 @@ export default function Sidebar() {
       <div className="border-t border-slate-100 p-3 space-y-0.5">
         <NavLink
           to="/dashboard/settings"
+          onClick={handleNav}
           className={({ isActive }) => cn(
             'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
             isActive ? 'bg-brand-50 text-brand-600' : 'text-slate-600 hover:bg-slate-50'
@@ -95,5 +116,6 @@ export default function Sidebar() {
         </div>
       </div>
     </aside>
+    </>
   )
 }

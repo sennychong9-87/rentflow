@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { getCurrentPeriod } from '@/lib/utils'
+import { logEvent } from '@/hooks/useAuditLog'
 
 export function useRentLedger(month, year) {
   const [ledger, setLedger] = useState([])
@@ -49,6 +50,22 @@ export function useRentLedger(month, year) {
         .single()
       if (error) throw error
       setLedger(prev => prev.map(l => l.id === id ? data : l))
+
+      const tenantName = data.tenants?.full_name || 'Unknown'
+      const unitLabel = data.units?.unit_number ? ` — ${data.units.unit_number}` : ''
+      logEvent(data.landlord_id, {
+        entity_type: 'rent',
+        entity_id: data.id,
+        entity_label: `${tenantName}${unitLabel}`,
+        action: 'paid',
+        description: `Rent marked as paid for ${tenantName}${unitLabel}`,
+        metadata: {
+          amount: paymentData.amount,
+          period_month: data.period_month,
+          period_year: data.period_year,
+        },
+      })
+
       return { data }
     } catch (err) {
       return { error: err.message }

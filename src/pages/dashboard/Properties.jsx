@@ -3,6 +3,8 @@ import { Building2, Plus, Home, MoreVertical, MapPin, Edit2, Trash2, ChevronDown
 import { usePropertyStore } from '@/store/propertyStore'
 import { useAuth } from '@/hooks/useAuth'
 import { formatCurrency, cn, UNIT_STATUS_STYLES } from '@/lib/utils'
+import { logEvent } from '@/hooks/useAuditLog'
+import { PROPERTY_TYPES } from '@/lib/constants'
 import EmptyState from '@/components/shared/EmptyState'
 import LoadingSpinner from '@/components/shared/LoadingSpinner'
 
@@ -12,6 +14,9 @@ function AddPropertyModal({ onClose, onSave }) {
   const [units, setUnits] = useState([{ unit_number: '', bedrooms: 1, bathrooms: 1, monthly_rent: '', deposit_amount: '' }])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  const isHmo = property.property_type === 'hmo'
+  const unitLabel = isHmo ? 'Room' : 'Unit'
 
   const addUnit = () => setUnits(u => [...u, { unit_number: '', bedrooms: 1, bathrooms: 1, monthly_rent: '', deposit_amount: '' }])
   const removeUnit = (i) => setUnits(u => u.filter((_, idx) => idx !== i))
@@ -71,9 +76,9 @@ function AddPropertyModal({ onClose, onSave }) {
                 <div>
                   <label className="label">Type</label>
                   <select className="input" value={property.property_type} onChange={e => setProperty(p => ({ ...p, property_type: e.target.value }))}>
-                    <option value="residential">Residential</option>
-                    <option value="commercial">Commercial</option>
-                    <option value="mixed">Mixed use</option>
+                    {PROPERTY_TYPES.map(pt => (
+                      <option key={pt.value} value={pt.value}>{pt.label}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -85,14 +90,14 @@ function AddPropertyModal({ onClose, onSave }) {
               {units.map((unit, i) => (
                 <div key={i} className="border border-slate-100 rounded-xl p-4 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-slate-700">Unit {i + 1}</span>
+                    <span className="text-sm font-medium text-slate-700">{unitLabel} {i + 1}</span>
                     {units.length > 1 && (
                       <button onClick={() => removeUnit(i)} className="text-xs text-red-500 hover:text-red-700">Remove</button>
                     )}
                   </div>
                   <div className="grid grid-cols-3 gap-3">
                     <div>
-                      <label className="label">Unit #</label>
+                      <label className="label">{unitLabel} #</label>
                       <input className="input" placeholder="1A" value={unit.unit_number} onChange={e => updateUnit(i, 'unit_number', e.target.value)} />
                     </div>
                     <div>
@@ -137,9 +142,12 @@ function AddPropertyModal({ onClose, onSave }) {
 
 function PropertyCard({ property, onDelete }) {
   const [expanded, setExpanded] = useState(false)
-  const units = property.units || []
+  const isHmo = property.property_type === 'hmo'
+  const displayUnits = (property.units || []).filter(u => !u.is_common_area)
+  const units = displayUnits
   const occupied = units.filter(u => u.status === 'occupied').length
   const totalRent = units.reduce((sum, u) => sum + (u.monthly_rent || 0), 0)
+  const unitLabel = isHmo ? 'Room' : 'Unit'
 
   return (
     <div className="card overflow-hidden">
@@ -164,7 +172,7 @@ function PropertyCard({ property, onDelete }) {
 
         <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-slate-50">
           <div>
-            <p className="text-xs text-slate-400">Units</p>
+            <p className="text-xs text-slate-400">{isHmo ? 'Rooms' : 'Units'}</p>
             <p className="text-lg font-bold text-slate-900">{units.length}</p>
           </div>
           <div>
@@ -184,7 +192,7 @@ function PropertyCard({ property, onDelete }) {
             onClick={() => setExpanded(!expanded)}
             className="w-full flex items-center justify-between px-5 py-3 bg-slate-50 text-xs font-medium text-slate-500 hover:bg-slate-100 transition-colors"
           >
-            <span>{units.length} unit{units.length !== 1 ? 's' : ''}</span>
+            <span>{units.length} {unitLabel.toLowerCase()}{units.length !== 1 ? 's' : ''}</span>
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
 
@@ -197,7 +205,7 @@ function PropertyCard({ property, onDelete }) {
                       <Home className="w-4 h-4 text-slate-400" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-slate-800">Unit {unit.unit_number}</p>
+                      <p className="text-sm font-medium text-slate-800">{unitLabel} {unit.unit_number}</p>
                       <p className="text-xs text-slate-400">{unit.bedrooms}bd · {unit.bathrooms}ba</p>
                     </div>
                   </div>
@@ -237,6 +245,27 @@ export default function Properties() {
         deposit_amount: parseFloat(unit.deposit_amount) || 0,
       })
     }
+    // Auto-create Common Areas unit for HMO
+    if (propertyData.property_type === 'hmo') {
+      await supabase.from('units').insert({
+        property_id: data.id,
+        landlord_id: user.id,
+        unit_number: 'common',
+        is_common_area: true,
+        monthly_rent: 0,
+        deposit_amount: 0,
+        status: 'occupied',
+        bedrooms: 0,
+        bathrooms: 0,
+      })
+    }
+    logEvent(user.id, {
+      entity_type: 'property',
+      entity_id: data.id,
+      entity_label: data.name,
+      action: 'created',
+      description: `Created property "${data.name}"`,
+    })
     fetchProperties()
   }
 

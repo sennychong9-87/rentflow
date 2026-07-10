@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
+import { logEvent } from '@/hooks/useAuditLog'
 
 export const useTenantStore = create((set, get) => ({
   tenants: [],
@@ -35,6 +36,13 @@ export const useTenantStore = create((set, get) => ({
       if (tenantData.unit_id) {
         await supabase.from('units').update({ status: 'occupied' }).eq('id', tenantData.unit_id)
       }
+      logEvent(data.landlord_id, {
+        entity_type: 'tenant',
+        entity_id: data.id,
+        entity_label: data.full_name,
+        action: 'created',
+        description: `Added tenant "${data.full_name}"`,
+      })
       return { data }
     } catch (error) {
       return { error: error.message }
@@ -53,6 +61,14 @@ export const useTenantStore = create((set, get) => ({
       set(state => ({
         tenants: state.tenants.map(t => t.id === id ? data : t)
       }))
+      logEvent(data.landlord_id, {
+        entity_type: 'tenant',
+        entity_id: data.id,
+        entity_label: data.full_name,
+        action: 'updated',
+        description: `Updated tenant "${data.full_name}"`,
+        metadata: { updated_fields: Object.keys(updates) },
+      })
       return { data }
     } catch (error) {
       return { error: error.message }
@@ -69,6 +85,15 @@ export const useTenantStore = create((set, get) => ({
         await supabase.from('units').update({ status: 'vacant' }).eq('id', tenant.unit_id)
       }
       set(state => ({ tenants: state.tenants.filter(t => t.id !== id) }))
+      if (tenant) {
+        logEvent(tenant.landlord_id, {
+          entity_type: 'tenant',
+          entity_id: tenant.id,
+          entity_label: tenant.full_name,
+          action: 'deleted',
+          description: `Deleted tenant "${tenant.full_name}"`,
+        })
+      }
       return { success: true }
     } catch (error) {
       return { error: error.message }

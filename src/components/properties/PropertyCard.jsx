@@ -10,11 +10,16 @@ import { formatCurrency, UNIT_STATUS_STYLES } from '@/lib/utils'
  */
 export default function PropertyCard({ property, onDelete }) {
   const [expanded, setExpanded] = useState(false)
-  const units = property.units || []
+  const isHmo = property.property_type === 'hmo'
+  const displayUnits = (property.units || []).filter(u => !u.is_common_area)
+  const units = displayUnits
   const occupied = units.filter(u => u.status === 'occupied').length
   const vacant = units.filter(u => u.status === 'vacant').length
   const totalRent = units.reduce((sum, u) => sum + (Number(u.monthly_rent) || 0), 0)
   const occupancyPct = units.length > 0 ? Math.round((occupied / units.length) * 100) : 0
+
+  const unitLabel = isHmo ? 'Room' : 'Unit'
+  const unitLabelPlural = isHmo ? 'Rooms' : 'Units'
 
   return (
     <div className="bg-white rounded-xl border border-slate-100 shadow-card overflow-hidden">
@@ -52,7 +57,7 @@ export default function PropertyCard({ property, onDelete }) {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-slate-50">
           <div>
-            <p className="text-xs text-slate-400 mb-0.5">Total units</p>
+            <p className="text-xs text-slate-400 mb-0.5">Total {unitLabelPlural.toLowerCase()}</p>
             <p className="text-xl font-bold text-slate-900">{units.length}</p>
           </div>
           <div>
@@ -97,7 +102,7 @@ export default function PropertyCard({ property, onDelete }) {
             onClick={() => setExpanded(e => !e)}
             className="w-full flex items-center justify-between px-5 py-3 bg-slate-50 text-xs font-medium text-slate-500 hover:bg-slate-100 transition-colors border-t border-slate-100"
           >
-            <span>{units.length} unit{units.length !== 1 ? 's' : ''}</span>
+            <span>{units.length} {unitLabel.toLowerCase()}{units.length !== 1 ? 's' : ''}</span>
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
 
@@ -110,7 +115,7 @@ export default function PropertyCard({ property, onDelete }) {
                       <Home className="w-4 h-4 text-slate-400" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-slate-800">Unit {unit.unit_number}</p>
+                      <p className="text-sm font-medium text-slate-800">{unitLabel} {unit.unit_number}</p>
                       <p className="text-xs text-slate-400">
                         {unit.bedrooms}bd · {unit.bathrooms}ba
                         {unit.sq_ft ? ` · ${unit.sq_ft} sq ft` : ''}

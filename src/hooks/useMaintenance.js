@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { logEvent } from '@/hooks/useAuditLog'
 
 export function useMaintenance() {
   const [tickets, setTickets] = useState([])
@@ -31,6 +32,7 @@ export function useMaintenance() {
 
   const updateTicket = async (id, updates) => {
     try {
+      const prevTicket = tickets.find(t => t.id === id)
       const { data, error } = await supabase
         .from('maintenance')
         .update(updates)
@@ -39,6 +41,24 @@ export function useMaintenance() {
         .single()
       if (error) throw error
       setTickets(prev => prev.map(t => t.id === id ? data : t))
+
+      // Audit log on status change
+      if (updates.status) {
+        const action = updates.status === 'resolved' ? 'resolved' : 'updated'
+        const tenantName = data.tenants?.full_name || 'Unknown'
+        logEvent(data.landlord_id, {
+          entity_type: 'maintenance',
+          entity_id: data.id,
+          entity_label: data.title,
+          action,
+          description: `${action === 'resolved' ? 'Resolved' : 'Updated'} maintenance ticket "${data.title}" for ${tenantName}`,
+          metadata: {
+            new_status: updates.status,
+            old_status: prevTicket?.status,
+          },
+        })
+      }
+
       return { data }
     } catch (err) {
       return { error: err.message }
